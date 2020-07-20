@@ -11,6 +11,7 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = os.urandom(24)
 
 
+
 #Pour fermer la base de donnee apres chaque commit 
 @app.teardown_appcontext
 def close_db(error):
