@@ -48,26 +48,34 @@ def index():
 
 
 
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    user = get_current_user()     #Nous faisons appel a luser connecter 
+    user = get_current_user()
 
     if request.method == 'POST':
 
         db = get_db()
+        existing_user_cur = db.execute('select id from users where name = ?', [request.form['name']])
+        existing_user = existing_user_cur.fetchone()
+
+        if existing_user:
+            return render_template('register.html', user=user, error='User already exists!please change your username')
+
         hashed_password = generate_password_hash(request.form['password'], method='sha256')
         db.execute('insert into users (name, password, expert, admin) values (?, ?, ?, ?)', [request.form['name'], hashed_password, '0', '0'])
         db.commit()
 
-        session ['user'] = request.form['name']
+        session['user'] = request.form['name']
 
-        return redirect(url_for('login'))
+        return redirect(url_for('index'))
 
     return render_template('register.html', user=user)
 
 @app.route('/login', methods=['GET', 'POST'] )
 def login():
     user = get_current_user()
+    error = None 
 
     if request.method == 'POST':
         db = get_db()
@@ -78,14 +86,22 @@ def login():
         user_cur = db.execute('select id, name, password from users where name = ?', [name])
         user_result = user_cur.fetchone()
 
-        if check_password_hash(user_result['password'], password):
-            session['user'] = user_result['name']
-            return redirect(url_for('index'))
-        else:
-            return '<h1>Wrong password Try again </h1>'
+        if user_result :
 
+           
+
+            if check_password_hash(user_result['password'], password):
+             session['user'] = user_result['name']
+             return redirect(url_for('index'))
+            else:
+             error = 'The password is incorrect'
+             error ='The username is incorrect'
     return render_template('login.html', user=user)
 
+
+
+
+         
 
 
 
@@ -94,6 +110,10 @@ def login():
 @app.route('/question')
 def question():
     user = get_current_user()
+
+     
+
+
     return render_template('question.html', user=user)
 
 
@@ -122,10 +142,10 @@ def answer(question_id):
 
 
 
-
 @app.route('/ask' , methods=['GET', 'POST']) # poser ou creer ue questio n
 def ask():
     user = get_current_user()
+
     db = get_db()
     if request.method == 'POST' :
         db.execute('insert into questions (question_text, asked_by_id, expert_id) values(?,?,?)', [request.form['question'] , user['id'], request.form['expert'] ])
@@ -148,6 +168,7 @@ def ask():
 def unanswered():
     user = get_current_user()
     db = get_db()
+
 # To display the question to the expert page
     questions_cur = db.execute('select questions.id,  questions.question_text,users.name from  questions join users on users.id= questions.asked_by_id where questions.answer_text is null and questions.expert_id = ?', [user['id']])
     
@@ -160,6 +181,9 @@ def unanswered():
 @app.route('/users')
 def users():
     user = get_current_user()
+
+    if not user :
+        return render_template(url_for('login'))
 
     db =get_db()
 #ICI NOUS ALLONS AFFICHER TOUT LES UTILISATEURS SUR LA PAGE DE L'ADMIN
